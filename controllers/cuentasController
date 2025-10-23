@@ -1,0 +1,80 @@
+const { cuentasData } = require('../data'); 
+
+const getTodasLasCuentas = (req, res) => {
+    const query = req.query; 
+
+    if (Object.keys(query).length === 0) {
+        const response = {
+            count: cuentasData.length,
+            data: cuentasData
+        };
+        return res.status(200).json(response);
+    }
+
+    const searchParam = Object.values(query)[0]; 
+
+    if (!searchParam) {
+        return res.status(400).json({ finded: false, message: "Parámetro de búsqueda inválido." });
+    }
+
+    const lowerSearchParam = searchParam.toLowerCase();
+
+    const cuentasEncontradas = cuentasData.filter(cuenta => {
+        return cuenta._id.toLowerCase().includes(lowerSearchParam) ||
+               cuenta.client.toLowerCase().includes(lowerSearchParam) ||
+               cuenta.gender.toLowerCase().includes(lowerSearchParam);
+    });
+
+    const numResults = cuentasEncontradas.length;
+    
+    if (numResults === 0) {
+        res.status(404).json({ finded: false, data: [] });
+    } else if (numResults === 1) {
+        res.status(200).json({ finded: true, account: cuentasEncontradas[0] });
+    } else {
+        res.status(200).json({ finded: true, count: numResults, data: cuentasEncontradas });
+    }
+};
+
+const getCuentaPorId = (req, res) => {
+    const cuentaId = req.params.id; 
+    const cuentaEncontrada = cuentasData.find(cuenta => cuenta._id === cuentaId);
+
+    if (cuentaEncontrada) {
+        res.status(200).json({ finded: true, account: cuentaEncontrada });
+    } else {
+        res.status(404).json({ finded: false, account: {} });
+    }
+};
+
+const getCuentasBalance = (req, res) => {
+    const cuentasActivas = cuentasData.filter(cuenta => cuenta.isActive === true);
+
+    let sumaTotal = 0;
+    
+    if (cuentasActivas.length > 0) {
+        sumaTotal = cuentasActivas.reduce((acc, cuenta) => {
+            const balanceStringLimpio = cuenta.balance.replace('$', '').replace(',', '');
+            const balanceNumerico = parseFloat(balanceStringLimpio);
+            
+            if (!isNaN(balanceNumerico)) {
+                return acc + balanceNumerico;
+            }
+            return acc;
+        }, 0);
+    }
+    
+    const response = {
+        status: cuentasActivas.length > 0, 
+        accountBalance: sumaTotal 
+    };
+
+    res.status(200).json(response);
+};
+
+
+module.exports = {
+    getTodasLasCuentas, 
+    getCuentaPorId,     
+    getCuentasBalance
+};
